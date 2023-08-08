@@ -1,5 +1,6 @@
 package socket.tcp
 
+import io.ktor.utils.io.ByteReadChannel
 import sha1
 import socket.IOException
 import socket.SocketInterface
@@ -33,6 +34,26 @@ internal class WebSocket(private val socket: Socket) : SocketInterface {
         out.write(data)
 
         socket.send(out.toByteArray())
+    }
+
+    override suspend fun send(channel: ByteReadChannel) {
+
+        try {
+
+            var offset = 0
+            val byteArray = ByteArray(1024)
+
+            do {
+                val currentRead = channel.readAvailable(byteArray, offset, byteArray.size)
+                send(byteArray.toUByteArray())
+                offset += currentRead
+            } while (currentRead > 0)
+
+        } catch (e: Exception) {
+            close()
+            throw IOException(e.message)
+        }
+
     }
 
     override fun sendRemaining() {

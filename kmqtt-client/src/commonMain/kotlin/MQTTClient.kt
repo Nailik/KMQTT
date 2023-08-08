@@ -1,3 +1,4 @@
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.atomicfu.locks.reentrantLock
 import kotlinx.atomicfu.locks.withLock
 import mqtt.MQTTCurrentPacket
@@ -125,6 +126,12 @@ public class MQTTClient(
         socket!!.send(data)
     }
 
+    private suspend fun send(channel: ByteReadChannel) {
+        connectSocket()
+        lastActiveTimestamp = currentTimeMillis()
+        socket!!.send(channel)
+    }
+
     private fun sendConnect() {
         val connect = if (mqttVersion == 4) {
             MQTT4Connect(
@@ -220,6 +227,49 @@ public class MQTTClient(
                 throw Exception("Packet size too big for the server to handle")
             }
             send(data)
+        }
+    }
+
+    /**
+     * Send a PUBLISH message
+     *
+     * @param retain whether the message should be retained by the server
+     * @param qos the QoS value
+     * @param topic the topic of the message
+     * @param payload the content of the message
+     * @param properties the properties to be included in the message (used only in MQTT5)
+     */
+    public suspend fun publish(retain: Boolean, qos: Qos, topic: String, channel: ByteReadChannel, properties: MQTT5Properties = MQTT5Properties()) {
+        lock.withLock {
+            if (!connackReceived && properties.authenticationData != null) {
+                throw Exception("Not sending until connection complete")
+            }
+            if (qos > maximumQos) {
+                throw Exception("QoS exceeding maximum server supported QoS")
+            }
+            if (retain && !retainedSupported) {
+                throw Exception("Retained not supported by the server")
+            }
+
+            val packetId = if (qos != Qos.AT_MOST_ONCE) {
+                generatePacketId()
+            } else {
+                null
+            }
+            val publish = if (mqttVersion == 4) {
+                MQTT4Publish(retain, qos, false, topic, packetId, null)
+            } else {
+                // TODO support client topic aliases
+                MQTT5Publish(retain, qos, false, topic, packetId, properties, null)
+            }
+            if (qos != Qos.AT_MOST_ONCE) {
+                if (pendingAcknowledgeMessages.size + pendingAcknowledgePubrel.size >= receiveMax.toInt()) {
+                    throw Exception("Sending more PUBLISH with QoS > 0 than indicated by the server in receiveMax")
+                }
+                pendingAcknowledgeMessages[packetId!!] = publish
+            }
+
+            send(channel)
         }
     }
 

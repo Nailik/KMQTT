@@ -62,6 +62,7 @@ kotlin {
                 implementation(project(":kmqtt-common"))
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:$serializationVersion")
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-protobuf:$serializationVersion")
+                implementation("io.ktor:ktor-utils:2.3.3")
             }
         }
         val commonTest by getting {
