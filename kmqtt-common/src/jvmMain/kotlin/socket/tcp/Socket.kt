@@ -1,5 +1,6 @@
 package socket.tcp
 
+import io.ktor.utils.io.ByteReadChannel
 import socket.IOException
 import socket.SocketClosedException
 import socket.SocketInterface
@@ -18,6 +19,27 @@ public actual open class Socket(
     actual override fun send(data: UByteArray) {
         sendBuffer.put(data.toByteArray())
         sendFromBuffer()
+    }
+
+    actual override suspend fun send(channel: ByteReadChannel) {
+
+        try {
+
+            var offset = 0
+            val byteArray = ByteArray(1024)
+
+            do {
+                val currentRead = channel.readAvailable(byteArray, offset, byteArray.size)
+                sendBuffer.put(byteArray)
+                sendFromBuffer()
+                offset += currentRead
+            } while (currentRead > 0)
+
+        } catch (e: Exception) {
+            close()
+            throw IOException(e.message)
+        }
+
     }
 
     protected fun sendFromBuffer() {

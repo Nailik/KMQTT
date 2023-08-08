@@ -1,6 +1,9 @@
 package socket.tcp
 
 import Buffer
+import io.ktor.utils.io.ByteReadChannel
+import punycode.toUnicode
+import socket.IOException
 import socket.SocketInterface
 import socket.SocketState
 import toBuffer
@@ -28,6 +31,26 @@ public actual open class Socket(
     actual override fun send(data: UByteArray) {
         socket.write(data.toBuffer())
         selectCallback(attachment, SocketState.WRITE)
+    }
+
+    actual override suspend fun send(channel: ByteReadChannel) {
+
+        try {
+
+            var offset = 0
+            val byteArray = ByteArray(1024)
+
+            do {
+                val currentRead = channel.readAvailable(byteArray, offset, byteArray.size)
+                send(byteArray.toUByteArray())
+                offset += currentRead
+            } while (currentRead > 0)
+
+        } catch (e: Exception) {
+            close()
+            throw IOException(e.message)
+        }
+
     }
 
     actual override fun read(): UByteArray? {

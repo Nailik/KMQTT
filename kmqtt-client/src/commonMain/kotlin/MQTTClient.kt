@@ -50,7 +50,8 @@ public class MQTTClient(
     private val willRetain: Boolean = false,
     private val willQos: Qos = Qos.AT_MOST_ONCE,
     private val enhancedAuthCallback: (authenticationData: UByteArray?) -> UByteArray? = { null },
-    private val publishReceived: (publish: MQTTPublish) -> Unit
+    private val publishReceived: (publish: MQTTPublish) -> Unit,
+    private val disconnectReceived: (disconnect: MQTTDisconnect) -> Unit
 ) {
 
     private val maximumPacketSize = properties.maximumPacketSize?.toInt() ?: (1024 * 1024)
@@ -587,6 +588,7 @@ public class MQTTClient(
                 throw MQTTException(disconnect.reasonCode)
             }
         }
+        disconnectReceived(disconnect)
     }
 
     private fun close() {

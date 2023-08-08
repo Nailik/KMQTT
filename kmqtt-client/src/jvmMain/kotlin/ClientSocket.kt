@@ -1,3 +1,4 @@
+import socket.streams.ByteArrayOutputStream
 import socket.tcp.Socket
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer

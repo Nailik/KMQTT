@@ -4,6 +4,7 @@ import close
 import getEagain
 import getErrno
 import getEwouldblock
+import io.ktor.utils.io.ByteReadChannel
 import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.convert
 import kotlinx.cinterop.usePinned
@@ -40,6 +41,26 @@ public actual open class Socket(
             }
             pinned
         }
+    }
+
+    actual override suspend fun send(channel: ByteReadChannel) {
+
+        try {
+
+            var offset = 0
+            val byteArray = ByteArray(1024)
+
+            do {
+                val currentRead = channel.readAvailable(byteArray, offset, byteArray.size)
+                send(byteArray.toUByteArray())
+                offset += currentRead
+            } while (currentRead > 0)
+
+        } catch (e: Exception) {
+            close()
+            throw IOException(e.message)
+        }
+
     }
 
     actual override fun sendRemaining() {

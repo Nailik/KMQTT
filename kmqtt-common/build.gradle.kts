@@ -41,6 +41,7 @@ kotlin {
         val commonMain by getting {
             dependencies {
                 implementation(kotlin("stdlib-common"))
+                implementation("io.ktor:ktor-utils:2.3.3")
             }
         }
         val commonTest by getting {
